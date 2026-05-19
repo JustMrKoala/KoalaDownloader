@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Koala YT Downloader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --border: #252525;
+    --text: #e8e4de;
+    --muted: #5a5652;
+    --accent: #c8f060;
+    --accent-dim: #9bbf3a;
+    --danger: #f06060;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-weight: 300;
+    overflow-x: hidden;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% -10%, rgba(200, 240, 96, 0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 40% at 80% 80%, rgba(200, 240, 96, 0.03) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .koala-icon {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: clamp(1.6rem, 4vw, 2rem);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .tagline {
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-left: 1px;
+    margin-top: 0.15rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 300;
+    padding: 0.85rem 2.8rem 0.85rem 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+    caret-color: var(--accent);
+  }
+
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  input[type="text"]:focus {
+    border-color: rgba(200, 240, 96, 0.35);
+  }
+
+  .clear-btn {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: none;
+    color: var(--muted);
+    transition: color 0.15s;
+    line-height: 0;
+  }
+  .clear-btn:hover { color: var(--text); }
+  .clear-btn svg { width: 14px; height: 14px; }
+
+  button#dl-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #0e0e0e;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.9rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s, opacity 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  button#dl-btn:hover { background: #d4f570; }
+  button#dl-btn:active { transform: scale(0.99); }
+  button#dl-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+  .status-area {
+    min-height: 1.2rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s;
+  }
+
+  .status-area.error { color: var(--danger); }
+  .status-area.success { color: var(--accent); }
+
+  .spinner {
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+    display: none;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-bar-wrap {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .progress-bar-wrap.active { opacity: 1; }
+
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  footer {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+  }
+
+  footer span { color: var(--accent-dim); }
+
+  @media (max-width: 400px) {
+    .card { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo-row">
+      <svg class="koala-icon" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="21" cy="21" r="20.5" stroke="#252525"/>
+        <ellipse cx="9" cy="17" rx="6" ry="7" fill="#252525" stroke="#353535"/>
+        <ellipse cx="33" cy="17" rx="6" ry="7" fill="#252525" stroke="#353535"/>
+        <ellipse cx="9" cy="16" rx="3.5" ry="4" fill="#1e1e1e"/>
+        <ellipse cx="33" cy="16" rx="3.5" ry="4" fill="#1e1e1e"/>
+        <circle cx="21" cy="22" r="13" fill="#1c1c1c" stroke="#2e2e2e"/>
+        <ellipse cx="21" cy="28" rx="5" ry="3.5" fill="#1a1a1a" stroke="#333"/>
+        <ellipse cx="21" cy="19.5" rx="4.5" ry="3" fill="#c8f060" opacity="0.08"/>
+        <circle cx="17.5" cy="19.5" r="2" fill="#2a2a2a"/>
+        <circle cx="24.5" cy="19.5" r="2" fill="#2a2a2a"/>
+        <circle cx="17.8" cy="19.2" r="0.7" fill="#c8f060" opacity="0.7"/>
+        <circle cx="24.8" cy="19.2" r="0.7" fill="#c8f060" opacity="0.7"/>
+        <ellipse cx="21" cy="23" rx="2.5" ry="1.5" fill="#252525"/>
+        <path d="M19 25 Q21 26.5 23 25" stroke="#333" stroke-width="0.8" stroke-linecap="round" fill="none"/>
+      </svg>
+      <h1>Koala Downloader</h1>
+    </div>
+    <p class="tagline">YouTube &amp; Shorts &mdash; best quality MP4</p>
+  </header>
+
+  <div class="card">
+    <div class="input-wrap">
+      <input type="text" id="url-input" placeholder="paste youtube link here..." autocomplete="off" spellcheck="false">
+      <button class="clear-btn" id="clear-btn" tabindex="-1">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <line x1="2" y1="2" x2="12" y2="12"/>
+          <line x1="12" y1="2" x2="2" y2="12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="progress-bar-wrap" id="progress-wrap">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <button id="dl-btn">Download</button>
+
+    <div class="status-area" id="status">
+      <div class="spinner" id="spinner"></div>
+      <span id="status-text"></span>
+    </div>
+  </div>
+
+  <footer>
+    files are never stored &mdash; served directly to your browser<br>
+    <span>zero storage &bull; zero logs &bull; open source</span>
+  </footer>
+</div>
+
+<script>
+  const input = document.getElementById('url-input');
+  const clearBtn = document.getElementById('clear-btn');
+  const dlBtn = document.getElementById('dl-btn');
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('status-text');
+  const spinner = document.getElementById('spinner');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressBar = document.getElementById('progress-bar');
+
+  input.addEventListener('input', () => {
+    clearBtn.style.display = input.value ? 'flex' : 'none';
+  });
+
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    clearBtn.style.display = 'none';
+    input.focus();
+    setStatus('', '');
+  });
+
+  function setStatus(msg, type) {
+    statusEl.className = 'status-area' + (type ? ' ' + type : '');
+    statusText.textContent = msg;
+    spinner.style.display = (type === 'loading') ? 'block' : 'none';
+  }
+
+  function animateProgress(targetPct, duration) {
+    progressWrap.classList.add('active');
+    const start = parseFloat(progressBar.style.width) || 0;
+    const diff = targetPct - start;
+    const startTime = performance.now();
+    function step(now) {
+      const elapsed = Math.min(now - startTime, duration);
+      const pct = start + diff * (elapsed / duration);
+      progressBar.style.width = pct + '%';
+      if (elapsed < duration) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function resetProgress() {
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
+    progressWrap.classList.remove('active');
+    setTimeout(() => { progressBar.style.transition = ''; }, 50);
+  }
+
+  dlBtn.addEventListener('click', async () => {
+    const url = input.value.trim();
+    if (!url) {
+      input.focus();
+      setStatus('paste a URL first', 'error');
+      return;
+    }
+
+    dlBtn.disabled = true;
+    resetProgress();
+    setStatus('fetching video...', 'loading');
+    animateProgress(30, 1200);
+
+    try {
+      animateProgress(65, 8000);
+      const res = await fetch('/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || json.error) {
+        setStatus(json.error || 'something went wrong', 'error');
+        resetProgress();
+        return;
+      }
+
+      animateProgress(100, 400);
+      setStatus('preparing file...', 'loading');
+
+      const byteChars = atob(json.data);
+      const byteNums = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteNums], { type: 'video/mp4' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = json.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+      setStatus('done. file sent to browser.', 'success');
+    } catch (err) {
+      setStatus('network error. is the server running?', 'error');
+      resetProgress();
+    } finally {
+      dlBtn.disabled = false;
+    }
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') dlBtn.click();
+  });
+</script>
+</body>
+</html>
